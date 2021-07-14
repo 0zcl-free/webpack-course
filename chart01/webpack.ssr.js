@@ -13,7 +13,7 @@ const webpack = require('webpack')
 const setMPA = () => {
   const entry = {}
   const htmlWebpackPlugins = []
-  const entryFile = glob.sync(path.join(__dirname, 'src/*/index.js'))
+  const entryFile = glob.sync(path.join(__dirname, 'src/*/index-server.js'))
   Object.values(entryFile).map(filePath => {
     const match = filePath.match(/src\/(.*)\/index/)
     const pageName = match && match[1]
@@ -21,16 +21,7 @@ const setMPA = () => {
       new HtmlWebpackPlugin({
         template: path.join(__dirname, `src/${pageName}/index.html`),
         filename: `${pageName}.html`,
-        chunks: [`${pageName}`],
-        // inject: true,
-        // minify: {
-        //   html5: true,
-        //   collapseWhitespace: true,
-        //   preserveLineBreaks: false,
-        //   minifyCSS: true,
-        //   minifyJS: true,
-        //   removeComments: false
-        // }
+        chunks: [`${pageName}`]
       })
     )
     entry[pageName] = filePath
@@ -47,7 +38,9 @@ module.exports = {
   entry: entry,
   output: {
     path: path.join(__dirname, 'dist'),
-    filename: '[name]_[chunkhash:8].js'
+    filename: '[name]-server.js',
+    globalObject: 'this',
+    libraryTarget: 'umd'
   },
   mode: 'none',
   module: {
@@ -116,6 +109,19 @@ module.exports = {
       filename: '[name]_[contenthash:8].css'
     }),
     new HTMLInlineCSSWebpackPlugin(),
+    function() {
+      this.hooks.done.tap('done', stats => {
+        // console.log('stats', stats)
+        console.log('stats.compilation.errors', stats.compilation.errors)
+        console.log('length', stats.compilation.errors.length)
+        if(stats.compilation.errors && 
+           stats.compilation.errors.length
+        ) {
+          console.log("Build Error");
+          process.exit(1);  // 非 0 表示失败
+        }
+      })
+    } 
     // new webpack.optimize.ModuleConcatenationPlugin()
   ].concat(htmlWebpackPlugins),
   optimization: {
